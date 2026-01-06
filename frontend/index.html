@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lists - Professional Task Management</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/vue@3.5.26/dist/vue.global.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div class="app-container">
+            <div class="main-app">
+                <header class="app-header">
+                    <div class="header-top">
+                        <h1 class="header-title">Lists</h1>
+                        <div class="search-box">
+                            <input 
+                                    type="text" 
+                                    id="searchInput" 
+                                    class="search-input" 
+                                    placeholder="Search tasks..."
+                                    v-model="searchQuery"
+                                >
+                        </div>
+                    </div>
+                    <div class="header-filters">
+                        <button 
+                            v-for="filter in ['all', 'active', 'completed']" 
+                            :key="filter"
+                            :class="['filter-btn', { active: currentFilter === filter }]"
+                            @click="currentFilter = filter"
+                        >
+                            {{ filter === 'all' ? 'All Tasks' : filter === 'active' ? 'Active' : 'Completed' }}
+                        </button>
+                    </div>
+                </header>
+
+                <div class="app-content">
+                    <div class="add-todo-section">
+                        <button @click="openModal" class="add-todo-btn">
+                            <span class="btn-icon">+</span>
+                            <span>Add New Task</span>
+                        </button>
+                    </div>
+
+                    <div class="stats-grid" v-if="todos.length > 0">
+                        <div class="stat-card">
+                            <div class="stat-value">{{ todos.length }}</div>
+                            <div class="stat-label">Total Tasks</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">{{ activeTodosCount }}</div>
+                            <div class="stat-label">Active</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">{{ completedTodosCount }}</div>
+                            <div class="stat-label">Completed</div>
+                        </div>
+                    </div>
+
+                    <div v-if="filteredTodos.length > 0" class="todos-container">
+                        <div 
+                            v-for="todo in filteredTodos" 
+                            :key="todo.id"
+                            :class="['todo-card', { completed: todo.completed, dragging: draggingTodo?.id === todo.id }]"
+                            draggable="true"
+                            @dragstart="handleDragStart(todo)"
+                            @dragend="handleDragEnd"
+                            @dragover="handleDragOver($event)"
+                            @drop="handleDrop($event, todo)"
+                        >
+                            <div class="todo-header">
+                                <input 
+                                    type="checkbox" 
+                                    class="todo-checkbox" 
+                                    :checked="todo.completed"
+                                    @change="toggleTodo(todo.id)"
+                                >
+                                <div class="todo-content">
+                                    <div class="todo-title">{{ todo.title }}</div>
+                                    <div v-if="todo.description" class="todo-description">{{ todo.description }}</div>
+                                    <div class="todo-meta">
+                                        <span :class="['todo-badge', 'priority', todo.priority]">
+                                            {{ priorityLabel(todo.priority) }}
+                                        </span>
+                                        <span v-if="todo.due_date" :class="['todo-badge', 'due-date', { overdue: isOverdue(todo.due_date) }]">
+                                            {{ formatDate(todo.due_date) }}
+                                        </span>
+                                        <span v-for="tag in todo.tags" :key="tag.id" class="todo-tag" :style="{ background: tag.color }">
+                                            {{ tag.name }}
+                                        </span>
+                                    </div>
+                                    <div v-if="todo.subtasks && todo.subtasks.length > 0" class="subtasks-list">
+                                        <div v-for="subtask in todo.subtasks" :key="subtask.id" class="subtask-item">
+                                            <input 
+                                                type="checkbox" 
+                                                class="subtask-checkbox" 
+                                                :checked="subtask.completed" 
+                                                @change="toggleSubtask(todo.id, subtask.id)"
+                                            >
+                                            <span :class="['subtask-text', { completed: subtask.completed }]">{{ subtask.title }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="todo-actions">
+                                        <button @click="openModal(todo)" class="action-btn edit">Edit</button>
+                                        <button @click="deleteTodo(todo.id)" class="action-btn delete">Delete</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="empty-state">
+                        <div class="empty-icon"></div>
+                        <h2 class="empty-title">No tasks yet</h2>
+                        <p class="empty-text">Click "Add New Task" to create your first task.</p>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="app-sidebar">
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">Priority Filter</h3>
+                    <div class="priority-filters">
+                        <button 
+                            v-for="priority in ['all', 'high', 'medium', 'low']" 
+                            :key="priority"
+                            :class="['priority-filter', { active: currentPriority === priority }]"
+                            @click="currentPriority = priority"
+                        >
+                            {{ priority === 'all' ? 'All Priorities' : priority.charAt(0).toUpperCase() + priority.slice(1) }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">Tags</h3>
+                    <div v-if="tags.length > 0" class="tags-list">
+                        <div 
+                            v-for="tag in tags" 
+                            :key="tag.id"
+                            :class="['tag-item', { active: currentTag?.id === tag.id }]"
+                            @click="currentTag = currentTag?.id === tag.id ? null : tag"
+                        >
+                            <div class="tag-color" :style="{ background: tag.color }"></div>
+                            <span class="tag-name">{{ tag.name }}</span>
+                            <span class="tag-count">{{ todoCountByTag(tag.id) }}</span>
+                        </div>
+                    </div>
+                    <button v-else class="tag-item">No tags created yet</button>
+                    <button @click="openTagModal" class="add-tag-btn">Add New Tag</button>
+                </div>
+            </aside>
+        </div>
+
+        <div :class="['modal-overlay', { active: showTodoModal }]" id="todoModal">
+            <div class="modal-content" @click.stop>
+                <div class="modal-header">
+                    <h2 class="modal-title">{{ editingTodo ? 'Edit Task' : 'Add New Task' }}</h2>
+                    <button @click="showTodoModal = false" class="modal-close"></button>
+                </div>
+                <div class="modal-body">
+                    <form @submit.prevent="saveTodo">
+                        <div class="form-group">
+                            <label for="title" class="form-label">Task Title *</label>
+                            <input 
+                                type="text" 
+                                id="title" 
+                                v-model="todoForm.title" 
+                                class="form-input" 
+                                required 
+                                placeholder="What do you need to do?"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea 
+                                id="description" 
+                                v-model="todoForm.description" 
+                                class="form-textarea" 
+                                rows="3" 
+                                placeholder="Add more details..."
+                            ></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="priority" class="form-label">Priority</label>
+                                <select id="priority" v-model="todoForm.priority" class="form-select">
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="dueDate" class="form-label">Due Date</label>
+                                <input 
+                                    type="datetime-local" 
+                                    id="dueDate" 
+                                    v-model="todoForm.due_date" 
+                                    class="form-input"
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Tags</label>
+                            <div class="tags-selector">
+                                <label 
+                                    v-for="tag in tags" 
+                                    :key="tag.id" 
+                                    class="tag-checkbox-label"
+                                >
+                                    <input 
+                                        type="checkbox" 
+                                        v-model="todoForm.tag_ids" 
+                                        :value="tag.id"
+                                        class="tag-checkbox"
+                                    >
+                                    <span :style="{ background: todoForm.tag_ids.includes(tag.id) ? tag.color : 'var(--bg-elevated)', 'border-color': todoForm.tag_ids.includes(tag.id) ? 'transparent' : 'var(--border-color)', color: todoForm.tag_ids.includes(tag.id) ? 'white' : 'var(--text-secondary)' }">{{ tag.name }}</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Subtasks</label>
+                            <div class="subtasks-list">
+                                <div v-for="(subtask, index) in todoForm.subtasks" :key="index" class="subtask-item">
+                                    <input 
+                                        type="text" 
+                                        v-model="subtask.title" 
+                                        class="form-input subtask-input"
+                                        placeholder="Enter subtask"
+                                    >
+                                    <button type="button" @click="removeSubtask(index)" class="subtask-remove"></button>
+                                </div>
+                            </div>
+                            <button type="button" @click="addSubtask" class="add-subtask-btn">Add Subtask</button>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button type="button" @click="showTodoModal = false" class="btn btn-secondary">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Task</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div :class="['modal-overlay', { active: showTagModal }]" id="tagModal">
+            <div class="modal-content" @click.stop>
+                <div class="modal-header">
+                    <h2 class="modal-title">Add New Tag</h2>
+                    <button @click="showTagModal = false" class="modal-close"></button>
+                </div>
+                <div class="modal-body">
+                    <form @submit.prevent="saveTag">
+                        <div class="form-group">
+                            <label for="tagName" class="form-label">Tag Name *</label>
+                            <input 
+                                type="text" 
+                                id="tagName" 
+                                v-model="tagForm.name" 
+                                class="form-input" 
+                                required 
+                                placeholder="e.g., Work, Personal"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="tagColor" class="form-label">Color</label>
+                            <input 
+                                type="color" 
+                                id="tagColor" 
+                                v-model="tagForm.color" 
+                                class="form-input"
+                                style="height: 50px;"
+                            >
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" @click="showTagModal = false" class="btn btn-secondary">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Create Tag</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

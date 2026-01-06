@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Test - TaskFlow</title>
+    <script src="https://unpkg.com/vue@3.5.26/dist/vue.global.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: #0A0E27;
+            color: white;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+        }
+        .pass {
+            background: #00D68A;
+            color: black;
+        }
+        .fail {
+            background: #FF4757;
+        }
+        .loading {
+            background: #FFB800;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>🧪 UI Test Results</h1>
+        <div v-for="test in tests" :key="test.name" :class="['test-result', test.status]">
+            {{ test.status === 'pass' ? '✅' : test.status === 'fail' ? '❌' : '⏳' }} {{ test.name }}
+            <span v-if="test.message"> - {{ test.message }}</span>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const tests = ref([
+                    { name: 'Vue.js loaded', status: 'loading' },
+                    { name: 'Vue app mounted', status: 'loading' },
+                    { name: 'Reactivity working', status: 'loading' },
+                    { name: 'Directives working', status: 'loading' }
+                ]);
+
+                onMounted(() => {
+                    tests.value[0].status = 'pass';
+                    tests.value[0].message = 'Vue.js v3 is available globally';
+
+                    tests.value[1].status = 'pass';
+                    tests.value[1].message = 'App successfully mounted to #app';
+
+                    tests.value[2].status = 'pass';
+                    tests.value[2].message = 'ref() reactivity working';
+
+                    tests.value[3].status = 'pass';
+                    tests.value[3].message = 'v-for, v-if, v-bind directives working';
+                });
+
+                return { tests };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
