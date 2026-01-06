@@ -113,7 +113,7 @@ createApp({
                     description: todo.description || '',
                     priority: todo.priority,
                     due_date: todo.due_date || null,
-                    tag_ids: todo.tags ? todo.tags.map(t => t.id) : [],
+                    tag_ids: todo.tags.map(t => t.id),
                     subtasks: todo.subtasks ? todo.subtasks.map(s => ({ ...s })) : []
                 };
             } else {

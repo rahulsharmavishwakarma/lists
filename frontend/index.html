@@ -83,7 +83,7 @@
                                     <div v-if="todo.description" class="todo-description">{{ todo.description }}</div>
                                     <div class="todo-meta">
                                         <span :class="['todo-badge', 'priority', todo.priority]">
-                                            {{ priorityLabel(todo.priority) }}
+                                            {{ todo.priority.toUpperCase() }}
                                         </span>
                                         <span v-if="todo.due_date" :class="['todo-badge', 'due-date', { overdue: isOverdue(todo.due_date) }]">
                                             {{ formatDate(todo.due_date) }}
