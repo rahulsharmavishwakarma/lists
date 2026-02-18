@@ -11,6 +11,6 @@ pytest-cov==4.1.0
 httpx==0.25.2
 
 # Code Quality
-black==23.12.1
+black==24.3.0
 ruff==0.1.9
 isort==5.13.2
